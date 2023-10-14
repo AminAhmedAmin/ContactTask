@@ -1,0 +1,348 @@
+﻿@model IEnumerable<ContactTask.ViewModels.ContactViewModel>
+@{
+    ViewData["Title"] = "Contacts";
+ 
+}
+
+   
+<div class="container">
+
+    <h1>Contact List</h1>
+<a asp-action="CreateContact" asp-controller="Contact" id="addButton">Add Contact</a>
+    <input type="hidden" id="page"  value="@ViewBag.page" name="name">
+    <table class="contact">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Number</th>
+                <th>Address</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Name)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Phone)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Adress)
+                    </td>
+
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Notes)
+                    </td>
+
+                 
+                    <td>
+                        @{
+                            if (item.IsLocked)
+                            {
+                                                <label id="@item.Id" style="color:green;font-size: 17px;">locked</label>
+                                              
+                            }
+                            else
+                            {
+                                                <button id="@item.Id" data-id="@item.Id" class="Edit">Edit</button>
+                            }
+                        }
+                    </td>
+
+
+                    <td>
+                        <button id="@item.Id"  data-id="@item.Id"  class="Delete">Delete</button>
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button class="Previous-button" onclick="Prev()">Previous</button>
+        <span  class="pagen">   @ViewBag.page from @ViewBag.pagecount</span>
+
+        <button class="Next-button" onclick="next()">Next</button>
+    </div>
+
+</div>
+
+
+
+<!-- The modal for the edit form -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" id="closeEditModal">&times;</span>
+        <h2>Edit Contact</h2>
+        <form id="editForm" action="" method="post">
+            <div class="form-group">
+                <input type="hidden" id="editid" name="name">
+                <label for="editName">Name:</label>
+                <input type="text" id="editName" name="name" >
+                <span style="color: crimson; width: 25px; " id="valitionname"></span>
+
+            </div>
+            <div class="form-group">
+                <label for="editNumber">Number:</label>
+                <input type="number" id="editNumber" name="number" >
+                <span style="color: crimson; width: 25px; " id="valitionNumber"></span>
+
+            </div>
+            <div class="form-group">
+                <label for="editAddress">Address:</label>
+                <input type="text" id="editAddress" name="address" >
+                <span style="color: crimson; width: 25px; " id="valitionaddress"></span>
+
+            </div>
+            <div class="form-group">
+                <label for="editNotes">Notes:</label>
+                <input type="text" id="editNotes" name="notes" >
+                <span style="color: crimson; width: 25px; " id="valitionNotes"></span>
+
+            </div>
+            <button type="button" class="Updatebtn-submit">Submit</button>
+
+            <button type="button" class="Updatebtn-Close">Close</button>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+
+
+    <script >
+        var baseUrl = "https://localhost:7266/Contact/"
+        let page = $('#page').val();
+       
+      
+
+       
+       
+
+        // view data && pagination
+        function next() {
+            page++
+            console.log(page)
+            Index(page)
+        }
+
+
+        function Prev() {
+            page = page - 1;
+            if (page == 0) { page = 1 }
+            else {
+                Index(page)
+            }
+
+
+        }
+
+
+        function Index(page) {
+          
+            window.location.replace(`${baseUrl}Index?page=${page}`)
+        }
+
+
+
+        $(document).on('click touch', '.Delete', function () {
+
+
+            const swalWithBootstrapButtons = Swal.mixin({
+                customClass: {
+                    confirmButton: 'btn btn-success',
+                    cancelButton: 'btn btn-danger'
+                },
+                buttonsStyling: false
+            })
+
+            swalWithBootstrapButtons.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'No, cancel!',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    var id = $(this).data('id');
+                    $(this).parent().parent().remove();
+                    $.ajax({
+                        url: `${baseUrl}deleteContact/${id}`,
+                        type: 'Delete',
+                        data: 'json',
+                        success: function (data) {
+
+                            swalWithBootstrapButtons.fire(
+                                'Deleted!',
+                                'Your file has been deleted.',
+                                'success'
+                            )
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error fetching data:', error);
+                        }
+                    });
+
+
+                    
+                } else if (
+                    /* Read more about handling dismissals below */
+                    result.dismiss === Swal.DismissReason.cancel
+                ) {
+                    swalWithBootstrapButtons.fire(
+                        'Cancelled',
+                        'Your imaginary file is safe :)',
+                        'error'
+                    )
+                }
+            })
+          
+        });
+
+
+
+
+        // Update and Delete button click events (add them dynamically to each row)
+
+        $(document).on('click touch', '.Edit', function () {
+            $("#editModal").show();
+            var id = $(this).data('id');
+             row = $(this).closest("tr");
+
+            fetchData(id)
+        });
+
+        // Function to fetch data using AJAX
+        function fetchData(id) {
+
+            $.ajax({
+                url: `${baseUrl}EditContact/${id}`,
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+               
+               
+                    populateForm(data);
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching data:', error);
+                  
+
+                }
+            });
+        }
+
+
+
+        // Function to populate form inputs
+        function populateForm(data) {
+
+            $('#editid').val(data.data.id);
+            $('#editName').val(data.data.name);
+            $('#editNumber').val(data.data.phone);
+            $('#editAddress').val(data.data.adress);
+            $('#editNotes').val(data.data.notes);
+           
+           
+        }
+
+
+
+        $(".Updatebtn-submit").click(function () {
+            // Get the form values
+            var Id = $("#editid").val();
+            var Name = $("#editName").val();
+            var Phone = $("#editNumber").val();
+            var Adress = $("#editAddress").val();
+            var Notes = $("#editNotes").val();
+           
+
+          
+           
+            var data = {
+                Id: Id,
+                Name: Name,
+                Phone: Phone,
+                Adress: Adress,
+                Notes: Notes,
+               
+            };
+
+
+
+            var editContactViewModel = JSON.stringify(data);
+           
+
+            //  Send the data to the server using AJAX
+            $.ajax({
+                url: baseUrl + "EditContact",
+                method: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; ', // Set the content type to JSON
+                data: editContactViewModel, // Convert data to JSON string
+                success: function (result) {
+
+                    if (result.data) {
+                        Swal.fire(
+                            ' تم التعديل ',
+                            '',
+                            'success'
+                        )
+                      
+
+                        $("#editModal").hide();
+
+                       
+
+                      var  newRow = 
+                           
+                            '<label  style="color:green;font-size: 17px;">locked</label>' 
+                           
+                          
+                         
+                        row.find("td:eq(0)").text(Phone);  // Get the name from the row
+                        row.find("td:eq(1)").text(Phone);  // Get the number from the row
+                       row.find("td:eq(2)").text(Adress);  // Get the address from the row
+                         row.find("td:eq(3)").text(Notes);
+                        row.find("td:eq(4)").html(newRow);
+
+
+
+
+                    } else {
+
+                    }
+
+
+
+                },
+                error: function (error) {
+
+                }
+            });
+        });
+
+
+        // Close the edit form when the close button is clicked
+        $(".close-button").click(function () {
+            $("#editModal").hide();
+        });
+
+        $(".Updatebtn-Close").click(function () {
+            $("#editModal").hide();
+        });
+
+    </script>
+}
